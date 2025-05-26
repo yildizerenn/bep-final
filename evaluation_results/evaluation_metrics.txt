@@ -1,0 +1,19 @@
+Model Evaluation Metrics
+=======================
+
+Cross-validation accuracy: 0.8302 ± 0.0274
+Test set accuracy: 0.8112
+
+Classification Report:
+Dutch precision: 0.8115
+Dutch recall: 0.8049
+Dutch F1-score: 0.8082
+
+International precision: 0.8110
+International recall: 0.8175
+International F1-score: 0.8142
+
+Dataset Information:
+Sample size: 1244 surnames
+Dutch samples: 616 (49.5%)
+International samples: 628 (50.5%)

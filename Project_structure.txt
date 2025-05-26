@@ -1,0 +1,77 @@
+# TU/e LinkedIn Graduate Analyzer
+
+tue-linkedin-analyzer/
+├── analysis/
+│   ├── __init__.py
+│   ├── nationality_classifier.py
+│   └── profile_analyzer.py
+│
+├── data/
+│   ├── individual_searches/         # Directory for individual name search results
+│   ├── batch_searches/              # Directory for CSV batch search results
+│   ├── test_profiles_analyzed.csv   # Results from test runs with analysis
+│   ├── test_profiles_raw.csv        # Raw data from test runs
+│   ├── tue_graduate_analysis.csv    # Main pipeline analysis results
+│   ├── tue_graduate_profiles.csv    # Main pipeline profile data
+│   └── tue_graduate_urls.txt        # LinkedIn URLs collected by the scraper
+│
+├── models/
+│   └── dutch_surname_classifier.pkl # Trained nationality classifier model
+│
+├── sample_data/
+│   └── final_surname_dataset.csv    # Training data for nationality classifier
+│
+├── scraper/
+│   ├── __init__.py
+│   ├── link_scraper.py              # SerpAPI LinkedIn URL scraper
+│   └── profile_scraper.py           # Proxycurl profile data collector
+│
+├── tests/
+│   ├── __init__.py
+│   ├── test_pipeline.py             # Full pipeline test script
+│   └── test_random_profiles.py      # Random profile testing script
+│
+├── utils/
+│   ├── __init__.py
+│   └── data_utils.py                # Helper functions for data processing
+│
+├── config.py                        # Configuration settings and API keys
+├── main.py                          # Main entry point for the pipeline
+├── search_by_name.py                # Individual name search functionality
+├── search_from_csv.py               # CSV batch processing functionality
+├── README.md                        # Project documentation
+├── names.csv                        # Sample CSV file with names to process
+└── requirements.txt                 # Project dependencies
+## Installation and Setup
+
+1. Clone this repository
+2. Install the required dependencies:
+   ```
+   pip install -r requirements.txt
+   ```
+3. Set up your API keys in the config.py file:
+   ```python
+   # Your SerpAPI key for Google search
+   SERPAPI_API_KEY = "your_serpapi_key_here"
+   
+   # Your Proxycurl API key for LinkedIn profile data
+   PROXYCURL_API_KEY = "your_proxycurl_key_here"
+   ```
+
+## Usage
+
+### Full Pipeline
+
+Run the complete pipeline (scrape LinkedIn URLs, get profile data, analyze):
+
+```bash
+python main.py
+```
+
+### Testing with Random Profiles
+
+Test the profile scraper with 10 random LinkedIn profiles:
+
+```bash
+python tests/test_random_profiles.py
+```
