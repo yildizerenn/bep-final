@@ -26,6 +26,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from scraper.link_scraper import search_tue_graduates
 from scraper.profile_scraper import create_linkedin_dataset
 from analysis.profile_analyzer import analyze_profiles
+from analysis.nationality_classifier import get_or_train_classifier, classify_surnames
 import config
 
 # Set up logging
@@ -81,6 +82,86 @@ def parse_args():
     
     return parser.parse_args()
 
+def process_individual_search(name, gdpr_compliant=True):
+    """Process individual name search without creating raw dataset."""
+    from search_by_name import search_specific_person
+    
+    logger.info(f"Searching for individual: {name}")
+    
+    # Search for LinkedIn profile
+    linkedin_url = search_specific_person(name)
+    if not linkedin_url:
+        logger.warning(f"No results found for {name}")
+        return None
+    
+    # Create temporary URL file
+    import tempfile
+    with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt') as temp_file:
+        temp_file.write(f"{linkedin_url}\n")
+        temp_url_file = temp_file.name
+    
+    try:
+        # Get profile data without saving raw file
+        dataset = create_linkedin_dataset(
+            url_file_path=temp_url_file,
+            api_key=config.PROXYCURL_API_KEY,
+            delay=0,
+            output_file=None  # Don't save raw data
+        )
+        
+        if dataset.empty:
+            logger.warning(f"No profile data retrieved for {name}")
+            return None
+        
+        # Get classifier and analyze
+        classifier = get_or_train_classifier(
+            model_path=str(Path(config.MODELS_DIR) / "dutch_surname_classifier.pkl"),
+            training_data_path=str(config.SURNAME_DATASET_FILE)
+        )
+        
+        analyzed_df = classify_surnames(dataset, classifier)
+        
+        # Apply GDPR compliance if requested
+        if gdpr_compliant:
+            columns_to_remove = ['full_name', 'city', 'surname', 'is_dutch_surname', 'index']
+            for col in columns_to_remove:
+                if col in analyzed_df.columns:
+                    analyzed_df = analyzed_df.drop(columns=[col])
+        
+        # Save results
+        output_dir = Path('data/individual_searches')
+        output_dir.mkdir(exist_ok=True, parents=True)
+        output_file = output_dir / f"{name.replace(' ', '_')}_analyzed.csv"
+        analyzed_df.to_csv(output_file, index=False)
+        
+        logger.info(f"Individual search complete. Results saved to {output_file}")
+        return output_file
+        
+    finally:
+        # Clean up temporary file
+        os.unlink(temp_url_file)
+
+def process_csv_batch(csv_file, first_name_col, last_name_col, gdpr_compliant=True):
+    """Process CSV batch without creating raw dataset."""
+    from search_from_csv import process_csv_names
+    
+    logger.info(f"Processing names from CSV: {csv_file}")
+    
+    result = process_csv_names(
+        csv_file=csv_file,
+        output_dir='data/batch_searches',
+        first_name_col=first_name_col,
+        last_name_col=last_name_col,
+        gdpr_compliant=gdpr_compliant
+    )
+    
+    if result:
+        logger.info(f"CSV processing complete. Results saved to {result}")
+    else:
+        logger.warning(f"No results found for names in {csv_file}")
+    
+    return result
+
 def main():
     """Run the complete pipeline or specific name searches."""
     args = parse_args()
@@ -89,40 +170,17 @@ def main():
     
     # Handle specific name search if requested
     if args.search_name:
-        logger.info(f"Searching for individual: {args.search_name}")
-        try:
-            from search_by_name import process_individual
-            result = process_individual(
-                name=args.search_name,
-                output_dir='data/individual_searches',
-                gdpr_compliant=not args.no_gdpr
-            )
-            if result:
-                logger.info(f"Individual search complete. Results saved to {result}")
-            else:
-                logger.warning(f"No results found for {args.search_name}")
-        except Exception as e:
-            logger.error(f"Error during individual search: {str(e)}")
+        process_individual_search(args.search_name, gdpr_compliant=not args.no_gdpr)
         return
     
     # Handle CSV batch processing if requested
     if args.csv_input:
-        logger.info(f"Processing names from CSV: {args.csv_input}")
-        try:
-            from search_from_csv import process_csv_names
-            result = process_csv_names(
-                csv_file=args.csv_input,
-                output_dir='data/batch_searches',
-                first_name_col=args.first_name_col,
-                last_name_col=args.last_name_col,
-                gdpr_compliant=not args.no_gdpr
-            )
-            if result:
-                logger.info(f"CSV processing complete. Results saved to {result}")
-            else:
-                logger.warning(f"No results found for names in {args.csv_input}")
-        except Exception as e:
-            logger.error(f"Error during CSV processing: {str(e)}")
+        process_csv_batch(
+            csv_file=args.csv_input,
+            first_name_col=args.first_name_col,
+            last_name_col=args.last_name_col,
+            gdpr_compliant=not args.no_gdpr
+        )
         return
     
     # If no specific search mode is selected, run the standard pipeline
@@ -152,7 +210,7 @@ def main():
                 url_file_path=args.url_file,
                 api_key=config.PROXYCURL_API_KEY,
                 delay=config.API_REQUEST_DELAY,
-                output_file=args.profiles_file
+                output_file=args.profiles_file  # Still save for standard pipeline
             )
             logger.info(f"Collected data for {len(dataset)} profiles")
         except Exception as e:

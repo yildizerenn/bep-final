@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Script to search for LinkedIn profiles from a CSV file of names.
+Script to search for LinkedIn profiles from a CSV file of names and analyze them.
 
 Usage:
-    python search_from_csv.py --input names.csv [--gdpr_compliant]
+    python search_from_csv.py --input names.csv [--no_gdpr]
 """
 
 import argparse
@@ -92,17 +92,16 @@ def process_csv_names(
             temp_url_file.unlink()
         return None
     
-    # Process the profiles
-    raw_output = output_path / "batch_raw.csv"
+    # Process the profiles without saving raw data
     final_output = output_path / "batch_analyzed.csv"
     
     try:
-        # Collect profile data
+        # Collect profile data (don't save raw data)
         dataset = create_linkedin_dataset(
             url_file_path=str(temp_url_file),
             api_key=config.PROXYCURL_API_KEY,
             delay=1,  # Add small delay between requests
-            output_file=str(raw_output)
+            output_file=None  # Don't save raw data
         )
         
         if dataset.empty:

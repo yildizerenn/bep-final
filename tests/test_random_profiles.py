@@ -4,6 +4,7 @@ including nationality analysis based on surnames.
 
 This script selects random LinkedIn profile URLs, processes them,
 and then performs nationality analysis on the resulting profiles.
+Modified to skip creating raw dataset.
 """
 
 import os
@@ -30,7 +31,6 @@ logger = logging.getLogger(__name__)
 
 def test_with_random_profiles(
     url_file: str,
-    output_file: str,
     final_output_file: str,
     surname_dataset_file: str,
     model_path: str,
@@ -38,14 +38,14 @@ def test_with_random_profiles(
     api_key: str = None,
     delay: int = 2,
     force_retrain: bool = False,
-    gdpr_compliant: bool = True  # Added GDPR compliance parameter
+    gdpr_compliant: bool = True
 ):
     """
     Test the profile scraper with random LinkedIn profiles and analyze nationality.
+    Modified to skip creating raw dataset.
     
     Args:
         url_file: Path to the file containing all LinkedIn URLs
-        output_file: Path to save the initial scraped profiles
         final_output_file: Path to save the final analyzed profiles
         surname_dataset_file: Path to the surname nationality training dataset
         model_path: Path to save/load the trained model
@@ -77,13 +77,13 @@ def test_with_random_profiles(
         api_key = config.PROXYCURL_API_KEY
     
     try:
-        # Run the profile scraper on the random URLs
+        # Run the profile scraper on the random URLs (without saving raw data)
         logger.info(f"Running profile scraper on {len(random_urls)} random URLs")
         dataset = create_linkedin_dataset(
             url_file_path=temp_url_file,
             api_key=api_key,
             delay=delay,
-            output_file=output_file
+            output_file=None  # Don't save raw data
         )
         
         # Check results from scraping
@@ -102,10 +102,15 @@ def test_with_random_profiles(
         logger.info("Performing nationality analysis on the profiles")
         
         # Get or train the Dutch nationality classifier
-        classifier = get_or_train_classifier(
-            model_path=model_path,
-            training_data_path=surname_dataset_file
-        )
+        if force_retrain:
+            logger.info("Forcing retraining of model")
+            from analysis.nationality_classifier import train_dutch_classifier
+            classifier = train_dutch_classifier(surname_dataset_file, model_path)
+        else:
+            classifier = get_or_train_classifier(
+                model_path=model_path,
+                training_data_path=surname_dataset_file
+            )
         
         # Classify the surnames
         analyzed_df = classify_surnames(dataset, classifier)
@@ -130,7 +135,7 @@ def test_with_random_profiles(
             else:
                 logger.info("No columns to remove for GDPR compliance")
         
-        # Save the final analyzed dataset
+        # Save the final analyzed dataset only
         analyzed_df.to_csv(final_output_file, index=False)
         logger.info(f"Analysis complete. Results saved to {final_output_file}")
         
@@ -140,6 +145,14 @@ def test_with_random_profiles(
         logger.info(f"Nationality classification results:")
         logger.info(f"  Dutch: {dutch_count}")
         logger.info(f"  International: {international_count}")
+        
+        # Print summary statistics
+        logger.info("\n========== TEST SUMMARY ==========")
+        logger.info(f"Total profiles tested: {count}")
+        logger.info(f"Successfully processed: {len(analyzed_df)}")
+        logger.info(f"Dutch graduates: {dutch_count}")
+        logger.info(f"International graduates: {international_count}")
+        logger.info("==================================")
             
     except Exception as e:
         logger.error(f"Error during test: {str(e)}")
@@ -159,11 +172,8 @@ def main():
     parser.add_argument('--url_file', type=str, default=str(config.DEFAULT_URLS_FILE),
                         help='Text file containing LinkedIn URLs')
     parser.add_argument('--output', type=str, 
-                        default=str(Path(config.DATA_DIR) / "test_profiles_raw.csv"),
-                        help='Output CSV file to save the initial test results')
-    parser.add_argument('--final_output', type=str, 
                         default=str(Path(config.DATA_DIR) / "test_profiles_analyzed.csv"),
-                        help='Output CSV file to save the final analyzed results')
+                        help='Output CSV file to save the analyzed results')
     parser.add_argument('--surname_dataset', type=str, default=str(config.SURNAME_DATASET_FILE),
                         help='Training dataset for surname nationality classification')
     parser.add_argument('--model_path', type=str, 
@@ -185,15 +195,14 @@ def main():
     # Run the test
     test_with_random_profiles(
         url_file=args.url_file,
-        output_file=args.output,
-        final_output_file=args.final_output,
+        final_output_file=args.output,
         surname_dataset_file=args.surname_dataset,
         model_path=args.model_path,
         count=args.count,
         api_key=args.api_key,
         delay=args.delay,
         force_retrain=args.force_retrain,
-        gdpr_compliant=not args.no_gdpr  # Pass GDPR compliance parameter
+        gdpr_compliant=not args.no_gdpr
     )
 
 if __name__ == "__main__":

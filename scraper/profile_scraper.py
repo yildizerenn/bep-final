@@ -144,7 +144,7 @@ def create_linkedin_dataset(
         url_file_path: Path to text file containing LinkedIn URLs
         api_key: Proxycurl API key
         delay: Delay between API calls to avoid rate limiting
-        output_file: Path to save the dataset as a CSV file
+        output_file: Path to save the dataset as a CSV file (optional)
     
     Returns:
         pandas.DataFrame: Dataset with extracted profile information

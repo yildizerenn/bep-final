@@ -3,12 +3,14 @@
 Script to search for a specific person's LinkedIn profile and analyze it.
 
 Usage:
-    python search_by_name.py --name "John Smith" [--gdpr_compliant]
+    python search_by_name.py --name "John Smith" [--no_gdpr]
 """
 
 import argparse
 import sys
 import logging
+import tempfile
+import os
 from pathlib import Path
 
 # Add parent directory to path to allow imports
@@ -40,36 +42,93 @@ def search_specific_person(name, api_key=None):
     if api_key is None:
         api_key = config.SERPAPI_API_KEY
     
-    # Construct search query
-    query = f'"{name}" site:linkedin.com/in "Eindhoven University of Technology"'
+    # Split name into parts for more flexible searching
+    name_parts = name.strip().split()
+    first_name = name_parts[0] if name_parts else ""
+    last_name = name_parts[-1] if len(name_parts) > 1 else ""
     
-    params = {
-        "engine": "google",
-        "q": query,
-        "num": 1,  # Only need the first result
-        "api_key": api_key
-    }
-    
-    try:
-        # Execute search
-        search = GoogleSearch(params)
-        results = search.get_dict()
+    # Try multiple search strategies
+    search_queries = [
+        # Strategy 1: Exact full name with TU/e
+        f'"{name}" site:linkedin.com/in "Eindhoven University of Technology"',
         
-        # Extract URL from results
-        organic_results = results.get("organic_results", [])
-        if organic_results:
-            url = organic_results[0].get("link")
-            # Verify it's a LinkedIn profile URL
-            if url and "linkedin.com/in/" in url:
-                logger.info(f"Found LinkedIn profile: {url}")
-                return url
+        # Strategy 2: First and last name with TU/e (less strict)
+        f'"{first_name}" "{last_name}" site:linkedin.com/in "Eindhoven University of Technology"',
         
-        logger.warning(f"No LinkedIn profile found for '{name}'")
-        return None
+        # Strategy 3: Try with TU/e variations
+        f'"{name}" site:linkedin.com/in ("Eindhoven University of Technology" OR "TU/e" OR "Technische Universiteit Eindhoven")',
+        
+        # Strategy 4: Just the name on LinkedIn (broadest)
+        f'"{name}" site:linkedin.com/in'
+    ]
     
-    except Exception as e:
-        logger.error(f"Error searching for {name}: {str(e)}")
-        return None
+    for i, query in enumerate(search_queries):
+        logger.info(f"Trying search strategy {i+1}: {query}")
+        
+        params = {
+            "engine": "google",
+            "q": query,
+            "num": 5,  # Get more results to check for exact matches
+            "api_key": api_key
+        }
+        
+        try:
+            # Execute search
+            search = GoogleSearch(params)
+            results = search.get_dict()
+            
+            # Extract URLs from results
+            organic_results = results.get("organic_results", [])
+            
+            for result in organic_results:
+                url = result.get("link", "")
+                title = result.get("title", "").lower()
+                snippet = result.get("snippet", "").lower()
+                
+                logger.info(f"Checking result: {title} - {url}")
+                
+                # Verify it's a LinkedIn profile URL
+                if url and "linkedin.com/in/" in url:
+                    # Check if the title or snippet contains the person's name
+                    name_lower = name.lower()
+                    first_lower = first_name.lower()
+                    last_lower = last_name.lower()
+                    
+                    # More flexible name matching
+                    name_matches = (
+                        name_lower in title or
+                        (first_lower in title and last_lower in title) or
+                        name_lower in snippet or
+                        (first_lower in snippet and last_lower in snippet)
+                    )
+                    
+                    # Check for TU/e connection (except for strategy 4)
+                    tue_connection = (
+                        i == 3 or  # Strategy 4 doesn't require TU/e check
+                        "eindhoven" in title or
+                        "eindhoven" in snippet or
+                        "tu/e" in title or
+                        "tu/e" in snippet
+                    )
+                    
+                    if name_matches and tue_connection:
+                        logger.info(f"Found matching LinkedIn profile: {url}")
+                        return url
+                    else:
+                        logger.info(f"Name match: {name_matches}, TU/e connection: {tue_connection}")
+            
+            # If we found results but no matches, try next strategy
+            if organic_results:
+                logger.info(f"Found {len(organic_results)} results but no exact matches for strategy {i+1}")
+            else:
+                logger.info(f"No results found for strategy {i+1}")
+                
+        except Exception as e:
+            logger.error(f"Error with search strategy {i+1}: {str(e)}")
+            continue
+    
+    logger.warning(f"No LinkedIn profile found for '{name}' after trying all strategies")
+    return None
 
 def process_individual(name, output_dir, gdpr_compliant=True):
     """
@@ -92,22 +151,18 @@ def process_individual(name, output_dir, gdpr_compliant=True):
     if not linkedin_url:
         return None
     
-    # Save URL to temporary file
-    temp_url_file = output_path / f"{name.replace(' ', '_')}_url.txt"
-    with open(temp_url_file, "w") as f:
-        f.write(f"{linkedin_url}\n")
-    
-    # Process the profile
-    raw_output = output_path / f"{name.replace(' ', '_')}_raw.csv"
-    final_output = output_path / f"{name.replace(' ', '_')}_analyzed.csv"
+    # Create temporary URL file
+    with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt') as temp_file:
+        temp_file.write(f"{linkedin_url}\n")
+        temp_url_file = temp_file.name
     
     try:
-        # Collect profile data
+        # Collect profile data without saving raw file
         dataset = create_linkedin_dataset(
-            url_file_path=str(temp_url_file),
+            url_file_path=temp_url_file,
             api_key=config.PROXYCURL_API_KEY,
             delay=0,  # No delay needed for single profile
-            output_file=str(raw_output)
+            output_file=None  # Don't save raw data
         )
         
         if dataset.empty:
@@ -139,7 +194,8 @@ def process_individual(name, output_dir, gdpr_compliant=True):
                 if col in analyzed_df.columns:
                     analyzed_df = analyzed_df.drop(columns=[col])
         
-        # Save final results
+        # Save final results (only analyzed, no raw)
+        final_output = output_path / f"{name.replace(' ', '_')}_analyzed.csv"
         analyzed_df.to_csv(final_output, index=False)
         logger.info(f"Results saved to {final_output}")
         
@@ -150,8 +206,8 @@ def process_individual(name, output_dir, gdpr_compliant=True):
         return None
     finally:
         # Clean up temporary file
-        if temp_url_file.exists():
-            temp_url_file.unlink()
+        if os.path.exists(temp_url_file):
+            os.unlink(temp_url_file)
 
 def main():
     """Run the name search as a standalone script."""
