@@ -1,5 +1,6 @@
 """
 Configuration settings for the TU/e LinkedIn Graduate Analyzer.
+Optimized for reduced credit consumption and improved accuracy.
 """
 import os
 from pathlib import Path
@@ -11,9 +12,14 @@ load_dotenv()
 # Base directory
 BASE_DIR = Path(__file__).resolve().parent
 
-# API keys
-SERPAPI_API_KEY = os.environ.get("SERPAPI_API_KEY", "fa66a92b5aa84b4e8080f537871c33745b7cb4c3a577487179cd533b899de698")
-PROXYCURL_API_KEY = os.environ.get("PROXYCURL_API_KEY", "KogNZkrYkWYPQpn0WpQr5Q")
+# API keys - REMOVE HARDCODED KEYS FOR SECURITY
+SERPAPI_API_KEY = os.environ.get("SERPAPI_API_KEY")
+PROXYCURL_API_KEY = os.environ.get("PROXYCURL_API_KEY")
+
+if not SERPAPI_API_KEY:
+    print("Warning: SERPAPI_API_KEY not found in environment variables")
+if not PROXYCURL_API_KEY:
+    print("Warning: PROXYCURL_API_KEY not found in environment variables")
 
 # Paths
 DATA_DIR = BASE_DIR / "data"
@@ -29,20 +35,22 @@ DEFAULT_PROFILES_FILE = DATA_DIR / "tue_graduate_profiles.csv"
 DEFAULT_ANALYSIS_FILE = DATA_DIR / "tue_graduate_analysis.csv"
 SURNAME_DATASET_FILE = BASE_DIR / "sample_data" / "final_surname_dataset.csv"
 
-# LinkedIn search parameters
+# OPTIMIZED LinkedIn search parameters - Reduced credit consumption
 LINKEDIN_SEARCH_QUERIES = [
-    'site:linkedin.com/in "Eindhoven University of Technology" "Bachelor"',
-    'site:linkedin.com/in "Eindhoven University of Technology" "Master"',
-    'site:linkedin.com/in "Eindhoven University of Technology" "BSc"',
-    'site:linkedin.com/in "Eindhoven University of Technology" "MSc"',
+    # Single comprehensive query instead of 4 separate ones
+    'site:linkedin.com/in ("Eindhoven University of Technology" OR "TU/e" OR "Technische Universiteit Eindhoven" OR "TU Eindhoven")'
 ]
 
-# University name variations for detecting TU/e graduates
+# Credit-saving limits
+MAX_RESULTS_PER_QUERY = 10  # Limit to first 10 results only
+MAX_PAGES_PER_QUERY = 1     # Only first page
+
+# University name variations for detecting TU/e graduates (expanded for better accuracy)
 TUE_VARIATIONS = [
-    "eindhoven university of technology", 
+    "eindhoven university of technology",
     "tu/e", 
     "technische universiteit eindhoven",
-    "tu eindhoven"
+    "tue"
 ]
 
 # API settings
