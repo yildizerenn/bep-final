@@ -1,77 +1,69 @@
-# TU/e LinkedIn Graduate Analyzer
-
 tue-linkedin-analyzer/
-├── analysis/
+│
+├── README.md                     # Project documentation
+├── requirements.txt              # Python dependencies
+├── config.py                     # Configuration settings and API keys
+├── main.py                       # Main pipeline script
+├── search_by_name.py            # Individual name search script
+├── search_from_csv.py           # CSV batch processing script
+├── evaluate_classifier.py       # Model evaluation script
+├── data_processor.py            # Data processing utilities
+│
+├── scraper/                     # Web scraping modules
 │   ├── __init__.py
-│   ├── nationality_classifier.py
-│   └── profile_analyzer.py
+│   ├── link_scraper.py         # LinkedIn URL scraper using SerpAPI
+│   └── profile_scraper.py      # Profile data collector using Proxycurl
 │
-├── data/
-│   ├── individual_searches/         # Directory for individual name search results
-│   ├── batch_searches/              # Directory for CSV batch search results
-│   ├── test_profiles_analyzed.csv   # Results from test runs with analysis
-│   ├── test_profiles_raw.csv        # Raw data from test runs
-│   ├── tue_graduate_analysis.csv    # Main pipeline analysis results
-│   ├── tue_graduate_profiles.csv    # Main pipeline profile data
-│   └── tue_graduate_urls.txt        # LinkedIn URLs collected by the scraper
-│
-├── models/
-│   └── dutch_surname_classifier.pkl # Trained nationality classifier model
-│
-├── sample_data/
-│   └── final_surname_dataset.csv    # Training data for nationality classifier
-│
-├── scraper/
+├── analysis/                    # Analysis and classification modules
 │   ├── __init__.py
-│   ├── link_scraper.py              # SerpAPI LinkedIn URL scraper
-│   └── profile_scraper.py           # Proxycurl profile data collector
+│   ├── nationality_classifier.py # Dutch surname classifier
+│   └── profile_analyzer.py      # Profile analysis and GDPR compliance
 │
-├── tests/
+├── utils/                       # Utility functions
 │   ├── __init__.py
-│   ├── test_pipeline.py             # Full pipeline test script
-│   └── test_random_profiles.py      # Random profile testing script
+│   └── data_utils.py           # Data loading and processing helpers
 │
-├── utils/
+├── tests/                       # Test scripts
 │   ├── __init__.py
-│   └── data_utils.py                # Helper functions for data processing
+│   ├── test_pipeline.py        # Full pipeline test
+│   └── test_random_profiles.py # Random profile testing
 │
-├── config.py                        # Configuration settings and API keys
-├── main.py                          # Main entry point for the pipeline
-├── search_by_name.py                # Individual name search functionality
-├── search_from_csv.py               # CSV batch processing functionality
-├── README.md                        # Project documentation
-├── names.csv                        # Sample CSV file with names to process
-└── requirements.txt                 # Project dependencies
-## Installation and Setup
-
-1. Clone this repository
-2. Install the required dependencies:
-   ```
-   pip install -r requirements.txt
-   ```
-3. Set up your API keys in the config.py file:
-   ```python
-   # Your SerpAPI key for Google search
-   SERPAPI_API_KEY = "your_serpapi_key_here"
-   
-   # Your Proxycurl API key for LinkedIn profile data
-   PROXYCURL_API_KEY = "your_proxycurl_key_here"
-   ```
-
-## Usage
-
-### Full Pipeline
-
-Run the complete pipeline (scrape LinkedIn URLs, get profile data, analyze):
-
-```bash
-python main.py
-```
-
-### Testing with Random Profiles
-
-Test the profile scraper with 10 random LinkedIn profiles:
-
-```bash
-python tests/test_random_profiles.py
-```
+├── models/                      # Trained ML models
+│   └── dutch_surname_classifier.pkl # Nationality classifier model
+│
+├── sample_data/                 # Sample datasets
+│   └── final_surname_dataset.csv # Training data for classifier (1244 surnames)
+│
+├── data/                        # Data storage (auto-created)
+│   ├── tue_graduate_urls.txt   # Scraped LinkedIn URLs
+│   ├── tue_graduate_profiles.csv # Raw profile data
+│   ├── tue_graduate_analysis.csv # Analyzed profiles
+│   ├── test_profiles_raw.csv   # Test run results
+│   ├── test_profiles_analyzed.csv
+│   ├── individual_searches/    # Results from name searches
+│   │   └── John_Smith_analyzed.csv
+│   └── batch_searches/         # Results from CSV processing
+│       ├── batch_analyzed.csv
+│       ├── batch_progress.json # Progress tracking
+│       └── batch_analyzed_partial.csv
+│
+├── evaluation_results/          # Model evaluation outputs
+│   ├── confusion_matrix.png
+│   ├── roc_curve.png
+│   ├── precision_recall_curve.png
+│   ├── feature_importance.png
+│   ├── feature_importance.csv
+│   └── evaluation_metrics.txt
+│
+├── training_dataset/            # Training data creation
+│   └── name_scraper.ipynb      # Notebook for scraping surname data
+│
+├── Input files (examples):
+│   ├── names.csv               # Sample CSV with 10 names
+│   ├── name_batch.csv          # Sample CSV with 19 names
+│   ├── graduates.txt           # Sample LinkedIn URLs (1000 entries)
+│   └── names.ipynb            # Notebook for creating name samples
+│
+└── .env                        # Environment variables (create this)
+    ├── SERPAPI_API_KEY=xxx
+    └── PROXYCURL_API_KEY=xxx

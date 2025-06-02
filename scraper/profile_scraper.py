@@ -72,10 +72,31 @@ def extract_profile_info(profile_data: Dict) -> Optional[Dict]:
         'latest_job_end_date': None
     }
     
+    # Helper function to check if a school is TU/e
+    def is_tue(school_name):
+        school_lower = school_name.lower()
+        for variation in tue_variations:
+            if variation in school_lower:
+                return True
+        return False
+    
     # Continue with extraction only for TU/e graduates
     # Extract education information
     if 'education' in profile_data and profile_data['education']:
+        # Separate TU/e and non-TU/e education
+        tue_education = []
+        other_education = []
+        
         for edu in profile_data['education']:
+            if is_tue(edu.get('school', '')):
+                tue_education.append(edu)
+            else:
+                other_education.append(edu)
+        
+        # Process TU/e education first, then other education
+        all_education = tue_education + other_education
+        
+        for edu in all_education:
             degree_name = edu.get('degree_name', '')
             
             # Skip if no degree name
@@ -85,20 +106,27 @@ def extract_profile_info(profile_data: Dict) -> Optional[Dict]:
             degree_lower = degree_name.lower()
             
             # Check if it's a bachelor's degree
-            if (re.search(r'bachelor|bsc|b\.sc|b\s*sc|bs\b', degree_lower) or 
-                (degree_lower.startswith('b') and 'applied science' in degree_lower)):
+            if not profile_info['bachelor_degree'] and (
+                re.search(r'bachelor|bsc|b\.sc|b\s*sc|bs\b|b\.s\.|b\s+s\b', degree_lower) or 
+                (degree_lower.startswith('b') and 'applied science' in degree_lower) or
+                'undergraduate' in degree_lower
+            ):
                 profile_info['bachelor_degree'] = degree_name
                 profile_info['bachelor_field'] = edu.get('field_of_study', 'N/A')
-                profile_info['bachelor_university'] = edu.get('school', 'N/A')  # Add university name
+                profile_info['bachelor_university'] = edu.get('school', 'N/A')
                 if edu.get('ends_at') and edu['ends_at'].get('year'):
                     profile_info['bachelor_end_year'] = int(edu['ends_at']['year'])
             
-            # Check if it's a master's degree
-            elif (re.search(r'master|msc|m\.sc|m\s*sc|ms\b', degree_lower) or 
-                  ('data science' in degree_lower and not profile_info['master_degree'])):
+            # Check if it's a master's degree or graduate degree
+            elif not profile_info['master_degree'] and (
+                re.search(r'master|msc|m\.sc|m\s*sc|ms\b|m\.s\.|m\s+s\b|mba|m\.b\.a', degree_lower) or 
+                re.search(r'graduate|postgraduate|post-graduate', degree_lower) or
+                ('data science' in degree_lower and 'bachelor' not in degree_lower) or
+                'erasmus mundus' in degree_lower.lower()  # Common joint master program
+            ):
                 profile_info['master_degree'] = degree_name
                 profile_info['master_field'] = edu.get('field_of_study', 'N/A')
-                profile_info['master_university'] = edu.get('school', 'N/A')  # Add university name
+                profile_info['master_university'] = edu.get('school', 'N/A')
                 if edu.get('ends_at') and edu['ends_at'].get('year'):
                     profile_info['master_end_year'] = int(edu['ends_at']['year'])
     
