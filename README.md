@@ -39,7 +39,7 @@ pip install -r requirements.txt
 ```
 
 3. Configure your API keys:
-Edit `config.py` and add your SerpAPI and Proxycurl API keys.
+Edit `config.py` and add your SerpAPI and Proxycurl API keys. (Do not forget to purchase API credits if so it won't run)
 
 ## Usage
 
