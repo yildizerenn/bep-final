@@ -1,17 +1,2 @@
 Unnamed: 0,First Name,Last Name
-2256,Nikola,Felkaroski
-2257,Conno,Boel
-2258,Chenfen,Duan
-2259,Bharat,Garhewal
-2261,Denny,Kuijpers
-2262,Jelle,Dikker
-2263,Yorick,Wijnands
-773,Ozge,Köroğlu
-635,Marko,Petković
-636,Niek,Peeters
-637,Kevin,Jilissen
-638,Andrei,Roncea
-1128,Maurits,Ambags
-1129,Saskia,Van der Hoeven
-1130,İZGİ,Özbay
-1131,Thomas,Schouten
+REPLACE WITH FILE CONTAINING STUDENT NAMES
